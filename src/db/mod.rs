@@ -1,6 +1,6 @@
 mod fixtures;
 
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use rusqlite::{Connection, Result as SqliteResult};
 use serde::Serialize;
 use std::env;
@@ -30,7 +30,7 @@ pub struct Game {
     pub away_team: String,
     pub home_score: i32,
     pub away_score: i32,
-    pub date: u64,
+    pub date: i64,
 }
 
 pub fn establish_connection() -> SqliteResult<Connection> {

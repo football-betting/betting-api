@@ -20,7 +20,7 @@ struct DbGame {
     home_team: String,
     away_team: String,
     status: String,
-    utc_date: u64,
+    utc_date: i64,
     home_score: Option<i32>,
     away_score: Option<i32>,
 }
@@ -29,7 +29,7 @@ struct DbGame {
 struct DbTip {
     user_id: i32,
     match_id: i32,
-    date: u64,
+    date: i64,
     score_home: i32,
     score_away: i32,
 }
@@ -90,7 +90,7 @@ pub fn load_fixtures(conn: &Connection) {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
-        .as_secs();
+        .as_secs() as i64;
 
     let games = get_games(&lands, now);
 
@@ -102,7 +102,7 @@ pub fn load_fixtures(conn: &Connection) {
     insert_tips(conn, &tips).unwrap();
 }
 
-fn get_tips(now: u64) -> Vec<DbTip> {
+fn get_tips(now: i64) -> Vec<DbTip> {
     let tpis = vec![
         DbTip {
             user_id: 1,
@@ -185,7 +185,7 @@ fn get_tips(now: u64) -> Vec<DbTip> {
     tpis
 }
 
-fn get_games(lands: &HashMap<&str, Team>, now: u64) -> Vec<DbGame> {
+fn get_games(lands: &HashMap<&str, Team>, now: i64) -> Vec<DbGame> {
     let games = vec![
         DbGame {
             id: 1,

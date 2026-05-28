@@ -1,7 +1,7 @@
 use crate::service::{calculate_positions, MatchInfo, UserRating};
 use crate::{db, service};
 use actix_web::{get, web, HttpResponse, Responder, Result as ActixResult};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -78,7 +78,7 @@ pub async fn user_by_id(user_id: web::Path<i32>) -> ActixResult<impl Responder> 
 
     let response = match find_user {
         Some(mut user) => {
-            user.tips.sort_by(|a, b| b.date.cmp(&a.date));
+            user.tips.sort_by_key(|t| std::cmp::Reverse(t.date));
             UserResponse { data: user }
         }
         None => return Ok(HttpResponse::NotFound().body("User not found")),

@@ -34,7 +34,7 @@ pub struct MatchInfo {
     pub tip_away: Option<i32>,
     pub score_home: Option<i32>,
     pub score_away: Option<i32>,
-    pub date: u64,
+    pub date: i64,
 }
 
 struct ScoreConfig;
@@ -119,7 +119,7 @@ pub fn get_user_rating(
 }
 
 pub fn calculate_positions(user_rating_list: &mut Vec<UserRating>, clear_tips: bool) {
-    user_rating_list.sort_by(|a, b| b.score_sum.cmp(&a.score_sum));
+    user_rating_list.sort_by_key(|u| std::cmp::Reverse(u.score_sum));
 
     let mut position = 0;
     let mut last_point = -1;
