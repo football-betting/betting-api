@@ -1,8 +1,7 @@
-use rusqlite::{Connection, params};
+use crate::service::Team;
+use rusqlite::{params, Connection};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use serde_json;
-use crate::service::Team;
 
 #[derive(Debug)]
 struct DbUser {
@@ -36,30 +35,71 @@ struct DbTip {
 }
 
 pub fn load_fixtures(conn: &Connection) {
-
-    create_tables(&conn).unwrap();
+    create_tables(conn).unwrap();
 
     let users = get_users();
 
     let lands: HashMap<&str, Team> = [
-        ("en", Team { name: String::from("England"), tla: String::from("ENG") }),
-        ("nl", Team { name: String::from("Netherlands"), tla: String::from("NED") }),
-        ("pl", Team { name: String::from("Poland"), tla: String::from("POL") }),
-        ("fr", Team { name: String::from("France"), tla: String::from("FRA") }),
-        ("de", Team { name: String::from("Germany"), tla: String::from("GER") }),
-        ("es", Team { name: String::from("Spain"), tla: String::from("ESP") }),
-    ].iter().cloned().collect();
+        (
+            "en",
+            Team {
+                name: String::from("England"),
+                tla: String::from("ENG"),
+            },
+        ),
+        (
+            "nl",
+            Team {
+                name: String::from("Netherlands"),
+                tla: String::from("NED"),
+            },
+        ),
+        (
+            "pl",
+            Team {
+                name: String::from("Poland"),
+                tla: String::from("POL"),
+            },
+        ),
+        (
+            "fr",
+            Team {
+                name: String::from("France"),
+                tla: String::from("FRA"),
+            },
+        ),
+        (
+            "de",
+            Team {
+                name: String::from("Germany"),
+                tla: String::from("GER"),
+            },
+        ),
+        (
+            "es",
+            Team {
+                name: String::from("Spain"),
+                tla: String::from("ESP"),
+            },
+        ),
+    ]
+    .iter()
+    .cloned()
+    .collect();
 
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
 
     let games = get_games(&lands, now);
 
-    insert_users(&conn, &users).unwrap();
-    insert_games(&conn, &games).unwrap();
+    insert_users(conn, &users).unwrap();
+    insert_games(conn, &games).unwrap();
 
     let tips = get_tips(now);
 
-    insert_tips(&conn, &tips).unwrap();
+    insert_tips(conn, &tips).unwrap();
 }
 
 fn get_tips(now: u64) -> Vec<DbTip> {
@@ -282,7 +322,7 @@ fn create_tables(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute(
         "CREATE TABLE IF NOT EXISTS match (
             id INTEGER PRIMARY KEY,
-            homeTeam he NOT NULL,
+            homeTeam TEXT NOT NULL,
             awayTeam TEXT NOT NULL,
             status TEXT NOT NULL,
             utcDate INTEGER NOT NULL,

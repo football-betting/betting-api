@@ -1,8 +1,8 @@
-use std::collections::{HashMap, HashSet};
-use actix_web::{get, HttpResponse, Responder, Result as ActixResult, web};
-use serde_derive::{Deserialize, Serialize};
-use crate::{db, service};
 use crate::service::{calculate_positions, MatchInfo, UserRating};
+use crate::{db, service};
+use actix_web::{get, web, HttpResponse, Responder, Result as ActixResult};
+use serde_derive::{Deserialize, Serialize};
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct StatusResponse {
@@ -28,9 +28,8 @@ pub struct UserResponse {
 
 #[get("/rating")]
 pub async fn rating() -> ActixResult<impl Responder> {
-    let mut user_rating_list = service::get_user_rating(
-        db::get_past_games().unwrap(), db::get_users().unwrap()
-    ).unwrap();
+    let mut user_rating_list =
+        service::get_user_rating(db::get_past_games().unwrap(), db::get_users().unwrap()).unwrap();
 
     let cloned_user_rating_list = user_rating_list.clone();
     let mut departments: HashSet<String> = HashSet::new();
@@ -41,7 +40,11 @@ pub async fn rating() -> ActixResult<impl Responder> {
     }
 
     for department in departments {
-        let mut department_users: Vec<UserRating> = cloned_user_rating_list.iter().filter(|user| user.department == department).cloned().collect();
+        let mut department_users: Vec<UserRating> = cloned_user_rating_list
+            .iter()
+            .filter(|user| user.department == department)
+            .cloned()
+            .collect();
 
         calculate_positions(&mut department_users, true);
         department_ratings.insert(department, department_users);
@@ -63,19 +66,21 @@ pub async fn rating() -> ActixResult<impl Responder> {
 
 #[get("/user/{user_id}")]
 pub async fn user_by_id(user_id: web::Path<i32>) -> ActixResult<impl Responder> {
-    let mut user_rating_list = service::get_user_rating(
-        db::get_past_games().unwrap(), db::get_users().unwrap()
-    ).unwrap();
+    let mut user_rating_list =
+        service::get_user_rating(db::get_past_games().unwrap(), db::get_users().unwrap()).unwrap();
 
     let user_id = user_id.into_inner();
     calculate_positions(&mut user_rating_list, false);
-    let find_user = user_rating_list.iter().find(|user| user.user_id == user_id).cloned();
+    let find_user = user_rating_list
+        .iter()
+        .find(|user| user.user_id == user_id)
+        .cloned();
 
     let response = match find_user {
         Some(mut user) => {
             user.tips.sort_by(|a, b| b.date.cmp(&a.date));
             UserResponse { data: user }
-        },
+        }
         None => return Ok(HttpResponse::NotFound().body("User not found")),
     };
 
@@ -84,13 +89,13 @@ pub async fn user_by_id(user_id: web::Path<i32>) -> ActixResult<impl Responder> 
 
 #[get("/game/{game_id}")]
 pub async fn get_past_result_by_game_id(game_id: web::Path<String>) -> ActixResult<impl Responder> {
-    let user_rating_list = service::get_user_rating(
-        db::get_past_games().unwrap(), db::get_users().unwrap()
-    ).unwrap();
+    let user_rating_list =
+        service::get_user_rating(db::get_past_games().unwrap(), db::get_users().unwrap()).unwrap();
 
     let game_id = game_id.into_inner();
 
-    let tips_with_match_id: Vec<&MatchInfo> = user_rating_list.iter()
+    let tips_with_match_id: Vec<&MatchInfo> = user_rating_list
+        .iter()
         .flat_map(|user_rating| &user_rating.tips)
         .filter(|tip| tip.match_id == game_id)
         .collect();
@@ -109,9 +114,9 @@ pub async fn status() -> ActixResult<impl Responder> {
 
 #[cfg(test)]
 mod tests {
-    use std::env;
-    use actix_web::{test, App};
     use actix_web::dev::ServiceResponse;
+    use actix_web::{test, App};
+    use std::env;
 
     use super::*;
 
@@ -152,7 +157,6 @@ mod tests {
         assert_eq!(global[1].score_sum, 11);
         assert_eq!(global[1].position, 2);
         assert_eq!(global[1].extra_point, 7);
-
 
         assert_eq!(global[2].name, "RobbieFowler");
         assert_eq!(global[2].department, "London");
@@ -242,12 +246,11 @@ mod tests {
                 .service(get_past_result_by_game_id)
                 .service(status)
                 .service(user_by_id)
-                .service(rating)
-        ).await;
+                .service(rating),
+        )
+        .await;
 
-        let req = test::TestRequest::get()
-            .uri(url)
-            .to_request();
+        let req = test::TestRequest::get().uri(url).to_request();
 
         let resp = test::call_service(&app, req).await;
         resp

@@ -1,9 +1,9 @@
 mod fixtures;
 
+use dotenv::dotenv;
 use rusqlite::{Connection, Result as SqliteResult};
 use serde::Serialize;
 use std::env;
-use dotenv::dotenv;
 
 #[derive(Debug, Serialize)]
 pub struct User {
@@ -43,9 +43,8 @@ pub fn establish_connection() -> SqliteResult<Connection> {
         connection
     } else {
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let connection = Connection::open(database_url)?;
         //fixtures::load_fixtures(&connection); # only when we want to load fixtures for start you local server and you dont have db
-        connection
+        Connection::open(database_url)?
     };
 
     Ok(conn)
@@ -54,7 +53,8 @@ pub fn establish_connection() -> SqliteResult<Connection> {
 pub fn get_users() -> SqliteResult<Vec<User>> {
     let conn = establish_connection()?;
 
-    let mut stmt = conn.prepare("SELECT id, username, department, winner, secretWinner FROM user")?;
+    let mut stmt =
+        conn.prepare("SELECT id, username, department, winner, secretWinner FROM user")?;
 
     let user_iter = stmt.query_map([], |row| {
         Ok(User {
@@ -77,7 +77,9 @@ pub fn get_users() -> SqliteResult<Vec<User>> {
 pub fn get_tips_by_user(user_id: i32) -> SqliteResult<Vec<Tip>> {
     let conn = establish_connection()?;
 
-    let mut stmt = conn.prepare("SELECT id, user_id, match_id, score_home, score_away FROM tip WHERE user_id = ?1")?;
+    let mut stmt = conn.prepare(
+        "SELECT id, user_id, match_id, score_home, score_away FROM tip WHERE user_id = ?1",
+    )?;
 
     let tips_iter = stmt.query_map([user_id], |row| {
         Ok(Tip {
@@ -125,9 +127,9 @@ pub fn get_past_games() -> SqliteResult<Vec<Game>> {
 
 #[cfg(test)]
 mod tests {
-    use serde_json::from_str;
-    use crate::service::Team;
     use super::*;
+    use crate::service::Team;
+    use serde_json::from_str;
 
     #[test]
     fn test_get_users() {
