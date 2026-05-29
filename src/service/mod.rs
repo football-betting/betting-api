@@ -1,9 +1,6 @@
-
-
+use crate::db::{get_tips_by_user, Game, Tip, User};
 use serde::{Deserialize, Serialize};
-use crate::db::{Game, get_tips_by_user, Tip, User};
 use std::collections::HashMap;
-use serde_json;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Team {
@@ -37,7 +34,7 @@ pub struct MatchInfo {
     pub tip_away: Option<i32>,
     pub score_home: Option<i32>,
     pub score_away: Option<i32>,
-    pub date: u64,
+    pub date: i64,
 }
 
 struct ScoreConfig;
@@ -49,25 +46,25 @@ impl ScoreConfig {
     pub const WIN_TEAM: i32 = 1;
 }
 
-pub fn get_user_rating(games: Vec<Game>, users: Vec<User>) -> Result<Vec<UserRating>, Box<dyn std::error::Error>> {
+pub fn get_user_rating(
+    games: Vec<Game>,
+    users: Vec<User>,
+) -> Result<Vec<UserRating>, Box<dyn std::error::Error>> {
     let mut user_rating_list = Vec::new();
 
     for user in &users {
-
         let mut extra_point = ScoreConfig::NO_WIN_TEAM;
-        if user.winner == "ESP"
-        {
+        if user.winner == "ESP" {
             extra_point = 15;
         }
 
-        if user.secret_winner == "ESP"
-        {
+        if user.secret_winner == "ESP" {
             extra_point = 7;
         }
 
         let mut user_rating = UserRating {
             name: user.username.clone(),
-            user_id: user.id.clone(),
+            user_id: user.id,
             department: user.department.clone(),
             position: 0,
             score_sum: extra_point,
@@ -86,7 +83,7 @@ pub fn get_user_rating(games: Vec<Game>, users: Vec<User>) -> Result<Vec<UserRat
             let mut match_info = MatchInfo {
                 match_id: game.id.to_string(),
                 user: user.username.clone(),
-                user_id: user.id.clone(),
+                user_id: user.id,
                 score: 0,
                 team1: serde_json::from_str(&game.home_team).unwrap(),
                 team2: serde_json::from_str(&game.away_team).unwrap(),
@@ -94,7 +91,7 @@ pub fn get_user_rating(games: Vec<Game>, users: Vec<User>) -> Result<Vec<UserRat
                 tip_away: None,
                 score_home: Some(game.home_score),
                 score_away: Some(game.away_score),
-                date: game.date.clone(),
+                date: game.date,
             };
 
             if let Some(tip) = tips_by_user.get(&game.id) {
@@ -122,7 +119,7 @@ pub fn get_user_rating(games: Vec<Game>, users: Vec<User>) -> Result<Vec<UserRat
 }
 
 pub fn calculate_positions(user_rating_list: &mut Vec<UserRating>, clear_tips: bool) {
-    user_rating_list.sort_by(|a, b| b.score_sum.cmp(&a.score_sum));
+    user_rating_list.sort_by_key(|u| std::cmp::Reverse(u.score_sum));
 
     let mut position = 0;
     let mut last_point = -1;
@@ -145,9 +142,15 @@ pub fn calculate_positions(user_rating_list: &mut Vec<UserRating>, clear_tips: b
 }
 
 fn calculate_score(match_info: &mut MatchInfo) {
-    if let (Some(score_home), Some(score_away), Some(tip_home), Some(tip_away)) =
-        (match_info.score_home, match_info.score_away, match_info.tip_home, match_info.tip_away) {
-        if (score_home > score_away && tip_home > tip_away) || (score_home < score_away && tip_home < tip_away) {
+    if let (Some(score_home), Some(score_away), Some(tip_home), Some(tip_away)) = (
+        match_info.score_home,
+        match_info.score_away,
+        match_info.tip_home,
+        match_info.tip_away,
+    ) {
+        if (score_home > score_away && tip_home > tip_away)
+            || (score_home < score_away && tip_home < tip_away)
+        {
             match_info.score = ScoreConfig::WIN_TEAM;
         }
 
@@ -165,123 +168,117 @@ fn calculate_score(match_info: &mut MatchInfo) {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     use rstest::rstest;
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
+    #[test]
+    fn test_calculate_positions() {
+        let mut user_rating_list = vec![
+            UserRating {
+                name: "jahnedoe".to_string(),
+                score_sum: 2,
+                user_id: 1,
+                department: "test".to_string(),
+                position: 0,
+                sum_win_exact: 0,
+                sum_score_diff: 0,
+                sum_team: 0,
+                extra_point: 0,
+                tips: Vec::new(),
+            },
+            UserRating {
+                name: "ninja".to_string(),
+                score_sum: 5,
+                user_id: 1,
+                department: "test".to_string(),
+                position: 0,
+                sum_win_exact: 0,
+                sum_score_diff: 0,
+                sum_team: 0,
+                extra_point: 0,
+                tips: Vec::new(),
+            },
+            UserRating {
+                name: "babo".to_string(),
+                score_sum: 10,
+                user_id: 1,
+                department: "test".to_string(),
+                position: 0,
+                sum_win_exact: 0,
+                sum_score_diff: 0,
+                sum_team: 0,
+                extra_point: 0,
+                tips: Vec::new(),
+            },
+            UserRating {
+                name: "abdul".to_string(),
+                score_sum: 9,
+                user_id: 1,
+                department: "test".to_string(),
+                position: 0,
+                sum_win_exact: 0,
+                sum_score_diff: 0,
+                sum_team: 0,
+                extra_point: 0,
+                tips: Vec::new(),
+            },
+            UserRating {
+                name: "rockstar".to_string(),
+                score_sum: 5,
+                user_id: 1,
+                department: "test".to_string(),
+                position: 0,
+                sum_win_exact: 0,
+                sum_score_diff: 0,
+                sum_team: 0,
+                extra_point: 0,
+                tips: Vec::new(),
+            },
+            UserRating {
+                name: "theBest".to_string(),
+                score_sum: 8,
+                user_id: 1,
+                department: "test".to_string(),
+                position: 0,
+                sum_win_exact: 0,
+                sum_score_diff: 0,
+                sum_team: 0,
+                extra_point: 0,
+                tips: Vec::new(),
+            },
+            UserRating {
+                name: "johndoe".to_string(),
+                score_sum: 9,
+                user_id: 1,
+                department: "test".to_string(),
+                position: 0,
+                sum_win_exact: 0,
+                sum_score_diff: 0,
+                sum_team: 0,
+                extra_point: 0,
+                tips: Vec::new(),
+            },
+        ];
 
-        #[test]
-        fn test_calculate_positions() {
-            let mut user_rating_list = vec![
-                UserRating {
-                    name: "jahnedoe".to_string(),
-                    score_sum: 2,
-                    user_id: 1,
-                    department: "test".to_string(),
-                    position: 0,
-                    sum_win_exact: 0,
-                    sum_score_diff: 0,
-                    sum_team: 0,
-                    extra_point: 0,
-                    tips: Vec::new(),
-                },
-                UserRating {
-                    name: "ninja".to_string(),
-                    score_sum: 5,
-                    user_id: 1,
-                    department: "test".to_string(),
-                    position: 0,
-                    sum_win_exact: 0,
-                    sum_score_diff: 0,
-                    sum_team: 0,
-                    extra_point: 0,
-                    tips: Vec::new(),
-                },
-                UserRating {
-                    name: "babo".to_string(),
-                    score_sum: 10,
-                    user_id: 1,
-                    department: "test".to_string(),
-                    position: 0,
-                    sum_win_exact: 0,
-                    sum_score_diff: 0,
-                    sum_team: 0,
-                    extra_point: 0,
-                    tips: Vec::new(),
-                },
-                UserRating {
-                    name: "abdul".to_string(),
-                    score_sum: 9,
-                    user_id: 1,
-                    department: "test".to_string(),
-                    position: 0,
-                    sum_win_exact: 0,
-                    sum_score_diff: 0,
-                    sum_team: 0,
-                    extra_point: 0,
-                    tips: Vec::new(),
-                },
-                UserRating {
-                    name: "rockstar".to_string(),
-                    score_sum: 5,
-                    user_id: 1,
-                    department: "test".to_string(),
-                    position: 0,
-                    sum_win_exact: 0,
-                    sum_score_diff: 0,
-                    sum_team: 0,
-                    extra_point: 0,
-                    tips: Vec::new(),
-                },
-                UserRating {
-                    name: "theBest".to_string(),
-                    score_sum: 8,
-                    user_id: 1,
-                    department: "test".to_string(),
-                    position: 0,
-                    sum_win_exact: 0,
-                    sum_score_diff: 0,
-                    sum_team: 0,
-                    extra_point: 0,
-                    tips: Vec::new(),
-                },
-                UserRating {
-                    name: "johndoe".to_string(),
-                    score_sum: 9,
-                    user_id: 1,
-                    department: "test".to_string(),
-                    position: 0,
-                    sum_win_exact: 0,
-                    sum_score_diff: 0,
-                    sum_team: 0,
-                    extra_point: 0,
-                    tips: Vec::new(),
-                },
-            ];
+        calculate_positions(&mut user_rating_list, true);
 
-            calculate_positions(&mut user_rating_list, true);
-
-            assert_eq!(user_rating_list[0].position, 1);
-            assert_eq!(user_rating_list[0].name, "babo");
-            assert_eq!(user_rating_list[1].position, 2);
-            assert_eq!(user_rating_list[1].name, "abdul");
-            assert_eq!(user_rating_list[2].position, 2);
-            assert_eq!(user_rating_list[2].name, "johndoe");
-            assert_eq!(user_rating_list[3].position, 4);
-            assert_eq!(user_rating_list[3].name, "theBest");
-            assert_eq!(user_rating_list[4].position, 5);
-            assert_eq!(user_rating_list[4].name, "ninja");
-            assert_eq!(user_rating_list[5].position, 5);
-            assert_eq!(user_rating_list[5].name, "rockstar");
-            assert_eq!(user_rating_list[6].position, 7);
-            assert_eq!(user_rating_list[6].name, "jahnedoe");
-        }
+        assert_eq!(user_rating_list[0].position, 1);
+        assert_eq!(user_rating_list[0].name, "babo");
+        assert_eq!(user_rating_list[1].position, 2);
+        assert_eq!(user_rating_list[1].name, "abdul");
+        assert_eq!(user_rating_list[2].position, 2);
+        assert_eq!(user_rating_list[2].name, "johndoe");
+        assert_eq!(user_rating_list[3].position, 4);
+        assert_eq!(user_rating_list[3].name, "theBest");
+        assert_eq!(user_rating_list[4].position, 5);
+        assert_eq!(user_rating_list[4].name, "ninja");
+        assert_eq!(user_rating_list[5].position, 5);
+        assert_eq!(user_rating_list[5].name, "rockstar");
+        assert_eq!(user_rating_list[6].position, 7);
+        assert_eq!(user_rating_list[6].name, "jahnedoe");
     }
 
     #[test]
@@ -412,14 +409,26 @@ mod tests {
     #[case(1, 0, 2, 0, ScoreConfig::WIN_TEAM)]
     #[case(0, 5, 0, 2, ScoreConfig::WIN_TEAM)]
     #[case(2, 3, 2, 5, ScoreConfig::WIN_TEAM)]
-    fn test_calculate_score(#[case] score_home: i32, #[case] score_away: i32, #[case] tip_home: i32, #[case] tip_away: i32, #[case] expected: i32) {
+    fn test_calculate_score(
+        #[case] score_home: i32,
+        #[case] score_away: i32,
+        #[case] tip_home: i32,
+        #[case] tip_away: i32,
+        #[case] expected: i32,
+    ) {
         let mut match_info = MatchInfo {
             match_id: "1".to_string(),
             user: "user".to_string(),
             user_id: 1,
             score: 0,
-            team1: Team { name: String::from("Team1"), tla: String::from("te1") },
-            team2: Team { name: String::from("Team2"), tla: String::from("te2") },
+            team1: Team {
+                name: String::from("Team1"),
+                tla: String::from("te1"),
+            },
+            team2: Team {
+                name: String::from("Team2"),
+                tla: String::from("te2"),
+            },
             tip_home: Some(tip_home),
             tip_away: Some(tip_away),
             score_home: Some(score_home),
@@ -429,7 +438,11 @@ mod tests {
 
         calculate_score(&mut match_info);
 
-        assert_eq!(match_info.score, expected, "Error: score_home: {}, score_away: {}, tip_home: {}, tip_away: {}", score_home, score_away, tip_home, tip_away);
+        assert_eq!(
+            match_info.score, expected,
+            "Error: score_home: {}, score_away: {}, tip_home: {}, tip_away: {}",
+            score_home, score_away, tip_home, tip_away
+        );
     }
 
     #[rstest]
@@ -439,14 +452,26 @@ mod tests {
     #[case(None, None, Some(1), Some(0), ScoreConfig::NO_WIN_TEAM)]
     #[case(None, None, Some(0), Some(0), ScoreConfig::NO_WIN_TEAM)]
     #[case(None, None, Some(0), Some(1), ScoreConfig::NO_WIN_TEAM)]
-    fn test_calculate_score_with_none(#[case] score_home: Option<i32>, #[case] score_away: Option<i32>, #[case] tip_home: Option<i32>, #[case] tip_away: Option<i32>, #[case] expected: i32) {
+    fn test_calculate_score_with_none(
+        #[case] score_home: Option<i32>,
+        #[case] score_away: Option<i32>,
+        #[case] tip_home: Option<i32>,
+        #[case] tip_away: Option<i32>,
+        #[case] expected: i32,
+    ) {
         let mut match_info = MatchInfo {
             match_id: "1".to_string(),
             user: "user".to_string(),
             user_id: 1,
             score: 0,
-            team1: Team { name: String::from("Team1"), tla: String::from("te1") },
-            team2: Team { name: String::from("Team2"), tla: String::from("te2") },
+            team1: Team {
+                name: String::from("Team1"),
+                tla: String::from("te1"),
+            },
+            team2: Team {
+                name: String::from("Team2"),
+                tla: String::from("te2"),
+            },
             tip_home,
             tip_away,
             score_home,
