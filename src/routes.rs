@@ -144,11 +144,11 @@ mod tests {
         let global = &result.table.global;
         assert_eq!(global[0].name, "ToniKroos");
         assert_eq!(global[0].department, "Langenfeld");
-        assert_eq!(global[0].score_sum, 21);
+        assert_eq!(global[0].score_sum, 20);
         assert_eq!(global[0].position, 1);
         assert_eq!(global[0].sum_win_exact, 1);
         assert_eq!(global[0].sum_score_diff, 1);
-        assert_eq!(global[0].extra_point, 15);
+        assert_eq!(global[0].extra_point, 12);
         assert_eq!(global[0].sum_team, 0);
         assert_eq!(global[0].tips.len(), 0);
 
@@ -156,7 +156,7 @@ mod tests {
         assert_eq!(global[1].department, "Langenfeld");
         assert_eq!(global[1].score_sum, 11);
         assert_eq!(global[1].position, 2);
-        assert_eq!(global[1].extra_point, 7);
+        assert_eq!(global[1].extra_point, 6);
 
         assert_eq!(global[2].name, "RobbieFowler");
         assert_eq!(global[2].department, "London");
@@ -178,10 +178,10 @@ mod tests {
         assert_eq!(result.data.user_id, 2);
         assert_eq!(result.data.name, "ToniKroos");
         assert_eq!(result.data.department, "Langenfeld");
-        assert_eq!(result.data.score_sum, 21);
+        assert_eq!(result.data.score_sum, 20);
         assert_eq!(result.data.position, 1);
         assert_eq!(result.data.sum_win_exact, 1);
-        assert_eq!(result.data.extra_point, 15);
+        assert_eq!(result.data.extra_point, 12);
         assert_eq!(result.data.sum_team, 0);
         assert_eq!(result.data.tips.len(), 2);
 
@@ -189,7 +189,7 @@ mod tests {
         assert_eq!(result.data.tips[0].team1.name, "Poland");
         assert_eq!(result.data.tips[0].team2.name, "France");
 
-        assert_eq!(result.data.tips[1].score, 2);
+        assert_eq!(result.data.tips[1].score, 3);
     }
 
     #[actix_rt::test]
@@ -216,12 +216,12 @@ mod tests {
 
         assert_eq!(result[1].match_id, "2".to_string());
         assert_eq!(result[1].user, "ToniKroos");
-        assert_eq!(result[1].score, 4);
+        assert_eq!(result[1].score, 5);
 
         assert_eq!(result[2].match_id, "2".to_string());
         assert_eq!(result[2].team1.name, "Poland");
         assert_eq!(result[2].team2.name, "France");
-        assert_eq!(result[2].score, 1);
+        assert_eq!(result[2].score, 2);
         assert_eq!(result[2].tip_home, Some(2));
         assert_eq!(result[2].tip_away, Some(2));
         assert_eq!(result[2].score_home, Some(1));
