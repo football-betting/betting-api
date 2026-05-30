@@ -41,9 +41,9 @@ struct ScoreConfig;
 
 impl ScoreConfig {
     pub const NO_WIN_TEAM: i32 = 0;
-    pub const WIN_EXACT: i32 = 4;
-    pub const WIN_SCORE_DIFF: i32 = 2;
-    pub const WIN_TEAM: i32 = 1;
+    pub const WIN_EXACT: i32 = 5;
+    pub const WIN_SCORE_DIFF: i32 = 3;
+    pub const WIN_TEAM: i32 = 2;
 }
 
 pub fn get_user_rating(
@@ -55,11 +55,11 @@ pub fn get_user_rating(
     for user in &users {
         let mut extra_point = ScoreConfig::NO_WIN_TEAM;
         if user.winner == "ESP" {
-            extra_point = 15;
+            extra_point = 12;
         }
 
         if user.secret_winner == "ESP" {
-            extra_point = 7;
+            extra_point = 6;
         }
 
         let mut user_rating = UserRating {
