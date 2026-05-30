@@ -78,7 +78,10 @@ pub fn get_tips_by_user(user_id: i32) -> SqliteResult<Vec<Tip>> {
     let conn = establish_connection()?;
 
     let mut stmt = conn.prepare(
-        "SELECT id, user_id, match_id, score_home, score_away FROM tip WHERE user_id = ?1",
+        "SELECT t.id, t.user_id, t.match_id, t.score_home, t.score_away \
+         FROM tip t JOIN match m ON m.id = t.match_id \
+         WHERE t.user_id = ?1 AND t.date < m.utcDate \
+         ORDER BY t.id",
     )?;
 
     let tips_iter = stmt.query_map([user_id], |row| {
@@ -167,6 +170,20 @@ mod tests {
         assert_eq!(tips[1].match_id, 2);
         assert_eq!(tips[1].score_home, 1);
         assert_eq!(tips[1].score_away, 0);
+    }
+
+    #[test]
+    fn test_get_tips_by_user_excludes_post_kickoff_tips() {
+        env::set_var("MODE", "test");
+        let tips = get_tips_by_user(6).unwrap();
+        assert!(
+            tips.iter().any(|t| t.match_id == 1),
+            "pre-kickoff tip on match 1 must remain scored"
+        );
+        assert!(
+            !tips.iter().any(|t| t.match_id == 2),
+            "post-kickoff tip on match 2 must be excluded from scoring"
+        );
     }
 
     #[test]
