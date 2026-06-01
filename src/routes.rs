@@ -26,10 +26,20 @@ pub struct UserResponse {
     pub data: UserRating,
 }
 
+fn load_user_ratings() -> Result<Vec<UserRating>, HttpResponse> {
+    let past_games =
+        db::get_past_games().map_err(|_| HttpResponse::InternalServerError().finish())?;
+    let users = db::get_users().map_err(|_| HttpResponse::InternalServerError().finish())?;
+    service::get_user_rating(past_games, users)
+        .map_err(|_| HttpResponse::InternalServerError().finish())
+}
+
 #[get("/rating")]
 pub async fn rating() -> ActixResult<impl Responder> {
-    let mut user_rating_list =
-        service::get_user_rating(db::get_past_games().unwrap(), db::get_users().unwrap()).unwrap();
+    let mut user_rating_list = match load_user_ratings() {
+        Ok(list) => list,
+        Err(resp) => return Ok(resp),
+    };
 
     let cloned_user_rating_list = user_rating_list.clone();
     let mut departments: HashSet<String> = HashSet::new();
@@ -66,8 +76,10 @@ pub async fn rating() -> ActixResult<impl Responder> {
 
 #[get("/user/{user_id}")]
 pub async fn user_by_id(user_id: web::Path<i32>) -> ActixResult<impl Responder> {
-    let mut user_rating_list =
-        service::get_user_rating(db::get_past_games().unwrap(), db::get_users().unwrap()).unwrap();
+    let mut user_rating_list = match load_user_ratings() {
+        Ok(list) => list,
+        Err(resp) => return Ok(resp),
+    };
 
     let user_id = user_id.into_inner();
     calculate_positions(&mut user_rating_list, false);
@@ -89,8 +101,10 @@ pub async fn user_by_id(user_id: web::Path<i32>) -> ActixResult<impl Responder> 
 
 #[get("/game/{game_id}")]
 pub async fn get_past_result_by_game_id(game_id: web::Path<String>) -> ActixResult<impl Responder> {
-    let user_rating_list =
-        service::get_user_rating(db::get_past_games().unwrap(), db::get_users().unwrap()).unwrap();
+    let user_rating_list = match load_user_ratings() {
+        Ok(list) => list,
+        Err(resp) => return Ok(resp),
+    };
 
     let game_id = game_id.into_inner();
 

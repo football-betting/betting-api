@@ -1,11 +1,21 @@
 use crate::db::{get_tips_by_user, Game, Tip, User};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Team {
+    #[serde(default, deserialize_with = "string_or_default")]
     pub name: String,
+    #[serde(default, deserialize_with = "string_or_default")]
     pub tla: String,
+}
+
+fn string_or_default<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::<String>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,8 +95,8 @@ pub fn get_user_rating(
                 user: user.username.clone(),
                 user_id: user.id,
                 score: 0,
-                team1: serde_json::from_str(&game.home_team).unwrap(),
-                team2: serde_json::from_str(&game.away_team).unwrap(),
+                team1: serde_json::from_str(&game.home_team).unwrap_or_default(),
+                team2: serde_json::from_str(&game.away_team).unwrap_or_default(),
                 tip_home: None,
                 tip_away: None,
                 score_home: Some(game.home_score),
@@ -443,6 +453,64 @@ mod tests {
             "Error: score_home: {}, score_away: {}, tip_home: {}, tip_away: {}",
             score_home, score_away, tip_home, tip_away
         );
+    }
+
+    #[test]
+    fn test_team_deserializes_null_and_missing_fields_without_panic() {
+        let null_fields: Team = serde_json::from_str(r#"{"name":null,"tla":null}"#).unwrap();
+        assert_eq!(null_fields.name, "");
+        assert_eq!(null_fields.tla, "");
+
+        let missing_fields: Team = serde_json::from_str("{}").unwrap();
+        assert_eq!(missing_fields.name, "");
+        assert_eq!(missing_fields.tla, "");
+
+        let partial: Team = serde_json::from_str(r#"{"name":"Germany"}"#).unwrap();
+        assert_eq!(partial.name, "Germany");
+        assert_eq!(partial.tla, "");
+    }
+
+    #[test]
+    fn test_get_user_rating_does_not_panic_on_malformed_team_json() {
+        let games = vec![
+            Game {
+                id: 1,
+                home_team: r#"{"name":null,"tla":null}"#.to_string(),
+                away_team: "not valid json".to_string(),
+                home_score: 1,
+                away_score: 0,
+                date: 1718048296,
+            },
+            Game {
+                id: 2,
+                home_team: "{}".to_string(),
+                away_team: r#"{"name":"France","tla":"FRA"}"#.to_string(),
+                home_score: 2,
+                away_score: 2,
+                date: 1718048297,
+            },
+        ];
+
+        let users = vec![User {
+            id: 999,
+            username: "TestUser".to_string(),
+            department: "test".to_string(),
+            winner: String::new(),
+            secret_winner: String::new(),
+        }];
+
+        std::env::set_var("MODE", "test");
+        let result = get_user_rating(games, users).expect("rating computation must not error");
+
+        assert_eq!(result.len(), 1);
+        let tips = &result[0].tips;
+        assert_eq!(tips.len(), 2);
+        assert_eq!(tips[0].team1.name, "");
+        assert_eq!(tips[0].team1.tla, "");
+        assert_eq!(tips[0].team2.name, "");
+        assert_eq!(tips[0].team2.tla, "");
+        assert_eq!(tips[1].team2.name, "France");
+        assert_eq!(tips[1].team2.tla, "FRA");
     }
 
     #[rstest]
