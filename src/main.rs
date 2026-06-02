@@ -1,13 +1,17 @@
 use actix_web::{web, App, HttpServer};
+use std::env;
 
 mod db;
 mod routes;
 mod service;
 
 const MAX_BODY_BYTES: usize = 16 * 1024;
+const DEFAULT_BIND_ADDR: &str = "127.0.0.1:8080";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let bind_addr = env::var("BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
+
     HttpServer::new(|| {
         App::new()
             .app_data(web::PayloadConfig::new(MAX_BODY_BYTES))
@@ -17,7 +21,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::user_by_id)
             .service(routes::get_past_result_by_game_id)
     })
-    .bind("127.0.0.1:8080")?
+    .bind(bind_addr)?
     .run()
     .await
 }
