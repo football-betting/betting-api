@@ -1,8 +1,8 @@
 
 # EM2024 Backend API
 
-[![codecov](https://codecov.io/gh/football-betting/em2024-api/branch/main/graph/badge.svg?token=TFPKKZZ09O)](https://codecov.io/gh/football-betting/em2024-api)
-![GithubAction](https://github.com/football-betting/em2024-api/workflows/Rust/badge.svg)
+[![betting-api-ci](https://github.com/football-betting/betting-api/actions/workflows/main.yml/badge.svg)](https://github.com/football-betting/betting-api/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/football-betting/betting-api/branch/main/graph/badge.svg)](https://codecov.io/gh/football-betting/betting-api)
 
 This repository contains the backend API for the EM2024 application.
 
