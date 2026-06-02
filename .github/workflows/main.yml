@@ -1,69 +1,55 @@
-name: Rust
+name: betting-api-ci
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+
+concurrency:
+  group: betting-api-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Run JS actions on Node 24 (covers actions that still ship a Node 20 runtime).
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build:
+  ci:
+    name: fmt · clippy · test · coverage
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v5
 
-      - name: Set up Rust
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          source $HOME/.cargo/env
-          rustup default stable
-
-      - name: Cache cargo registry
-        uses: actions/cache@v4
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
+          components: rustfmt, clippy
 
-      - name: Cache cargo index
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/index
-          key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-index-
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
 
-      - name: Cache cargo build
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-build-
+      - name: Format check
+        run: cargo fmt --all -- --check
 
-      - name: Build project
-        run: cargo build --verbose
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
 
-      - name: Run tests
-        run: cargo test --verbose
+      - name: Tests
+        run: cargo test --locked
 
       - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
 
-      - name: Run tarpaulin and generate coverage report
+      - name: Coverage
         run: cargo tarpaulin --out Xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4.0.1
+        uses: codecov/codecov-action@v5
         with:
-          files: ./cobertura.xml
-          fail_ci_if_error: true
-          verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
+          slug: football-betting/betting-api
+          files: ./cobertura.xml
+          fail_ci_if_error: false
