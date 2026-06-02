@@ -1,66 +1,67 @@
-
-# EM2024 Backend API
+# betting-api
 
 [![betting-api-ci](https://github.com/football-betting/betting-api/actions/workflows/main.yml/badge.svg)](https://github.com/football-betting/betting-api/actions/workflows/main.yml)
 [![codecov](https://codecov.io/gh/football-betting/betting-api/branch/main/graph/badge.svg)](https://codecov.io/gh/football-betting/betting-api)
 
-This repository contains the backend API for the EM2024 application.
+Read-only HTTP API for the office football-prediction game, built with Rust and
+Actix Web. It serves the leaderboard, per-user ratings, and per-game tips that
+the Next.js frontend renders. Replaces the archived
+[em2024-api](https://github.com/football-betting/em2024-api).
 
-## Installation
+## Architecture
 
-To run the project, use the following command:
+Part of the `football-betting` workspace, alongside the `frontend` (Next.js)
+and `macht-api` (importer). All three services share a single SQLite database
+at `../shared/db/database.db`.
+
+- **Schema authority** lives in the frontend (`frontend/db/schema.ts`, Drizzle).
+  This service only reads — keep its structs in lockstep with that schema.
+- This API performs **no writes**. User and tip data is written by the
+  frontend; match data is written exclusively by `macht-api`.
+
+## Configuration
+
+The server reads two environment variables:
+
+| Variable       | Purpose                                                        |
+|----------------|----------------------------------------------------------------|
+| `DATABASE_URL` | Path to the shared SQLite file (e.g. `../shared/db/database.db`). |
+| `MODE`         | `production` (default) reads `DATABASE_URL`; `test` uses an in-memory database with fixtures. |
+
+Create a `.env` with at least `DATABASE_URL` set, or export it in the
+environment before starting the server.
+
+## Running
 
 ```bash
-cp .env.example .env # please fill in the .env file
-```
-
-#### Database
-
-If you want to have a test database, you can copy it from em2024-frontend when you initialize the application. Alternatively, 
-
-you can add the line fixtures::load_fixtures(&connection); in the file src/db/mod.rs. Then, start the server and access the URL once to create the database with fixtures.
-
-```rust
-pub fn establish_connection() -> SqliteResult<Connection> {
-    ...
-    let conn = if mode == "test" {
-        ...
-    } else {
-        let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        let connection = Connection::open(database_url)?;
-        //fixtures::load_fixtures(&connection); # only when we want to load fixtures for start you local server and you dont have db
-        connection
-    };
-
-    Ok(conn)
-}
-```
-
-```
 cargo run
 ```
 
-The server will be available at: [http://localhost:8080/](http://localhost:8080/)
+The server listens on [http://localhost:8080/](http://localhost:8080/).
 
-
+If you don't have a database yet, point `DATABASE_URL` at the shared
+`database.db` produced by the frontend's migrations, or temporarily enable
+`fixtures::load_fixtures(&connection)` in `src/db/mod.rs` to seed one on first
+start.
 
 ## Testing
-
-To run tests, use the command:
 
 ```bash
 cargo test
 ```
 
-For code coverage, use the following command:
+For code coverage:
 
 ```bash
 cargo tarpaulin --out Html
 ```
 
-### Objects
+Tests run against an in-memory SQLite database (`MODE=test`) with fixtures, so
+they need neither the shared database nor a running server.
 
-#### UserInfo
+## Objects
+
+### UserInfo
 
 Represents information about a user.
 
@@ -92,7 +93,7 @@ Example:
 }
 ```
 
-#### Tip
+### Tip
 
 Represents a user's prediction for a match.
 
@@ -132,7 +133,7 @@ Example:
 }
 ```
 
-#### Team
+### Team
 
 Represents a football team.
 
@@ -148,7 +149,7 @@ Example:
 }
 ```
 
-### API Endpoints
+## API Endpoints
 
 - **[GET] /rating**: Retrieves all users sorted by position. Returns a list of `UserInfo` objects without tips (tips are an empty array).
 - **[GET] /user/{user_id}**: Retrieves a user by their user_id. Returns a `UserInfo` object with tips (tips are an array of `Tip`).
