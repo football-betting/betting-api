@@ -44,7 +44,14 @@ pub fn establish_connection() -> SqliteResult<Connection> {
     } else {
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         //fixtures::load_fixtures(&connection); # only when we want to load fixtures for start you local server and you dont have db
-        Connection::open(database_url)?
+        let connection = Connection::open(database_url)?;
+        // Shared DB with frontend + macht-api: wait for the lock instead of
+        // failing with SQLITE_BUSY, and use WAL so readers don't block writers.
+        connection.busy_timeout(std::time::Duration::from_millis(5000))?;
+        connection.query_row("PRAGMA journal_mode = WAL", [], |row| {
+            row.get::<_, String>(0)
+        })?;
+        connection
     };
 
     Ok(conn)
