@@ -1,0 +1,16 @@
+[Unit]
+Description=betting-api — football pool read API
+After=network.target
+
+[Service]
+Type=simple
+# Adjust WorkingDirectory / paths to your deployment.
+WorkingDirectory=/opt/football-betting/betting-api
+EnvironmentFile=/opt/football-betting/betting-api/.env
+ExecStart=/opt/football-betting/betting-api/target/release/betting_api
+Restart=on-failure
+RestartSec=2
+MemoryMax=500M
+
+[Install]
+WantedBy=multi-user.target
