@@ -1,6 +1,5 @@
 mod fixtures;
 
-use dotenvy::dotenv;
 use rusqlite::{Connection, Result as SqliteResult};
 use serde::Serialize;
 use std::env;
@@ -33,9 +32,10 @@ pub struct Game {
     pub date: i64,
 }
 
+// Opens a single connection. Callers reuse one connection per request rather
+// than opening one per query. Env (.env) is loaded ONCE in main(), never here,
+// so this stays free of file I/O and the global env lock on the hot path.
 pub fn establish_connection() -> SqliteResult<Connection> {
-    dotenv().ok();
-
     let mode = env::var("MODE").unwrap_or_else(|_| String::from("production"));
     let conn = if mode == "test" {
         let connection = Connection::open_in_memory()?;
@@ -43,7 +43,6 @@ pub fn establish_connection() -> SqliteResult<Connection> {
         connection
     } else {
         let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-        //fixtures::load_fixtures(&connection); # only when we want to load fixtures for start you local server and you dont have db
         let connection = Connection::open(database_url)?;
         // Shared DB with frontend + macht-api: wait for the lock instead of
         // failing with SQLITE_BUSY, and use WAL so readers don't block writers.
@@ -57,9 +56,7 @@ pub fn establish_connection() -> SqliteResult<Connection> {
     Ok(conn)
 }
 
-pub fn get_users() -> SqliteResult<Vec<User>> {
-    let conn = establish_connection()?;
-
+pub fn get_users(conn: &Connection) -> SqliteResult<Vec<User>> {
     let mut stmt =
         conn.prepare("SELECT id, username, department, winner, secretWinner FROM user")?;
 
@@ -81,17 +78,17 @@ pub fn get_users() -> SqliteResult<Vec<User>> {
     Ok(user_list)
 }
 
-pub fn get_tips_by_user(user_id: i32) -> SqliteResult<Vec<Tip>> {
-    let conn = establish_connection()?;
-
+// Every still-countable tip (placed before kickoff, BA-003) for all users in a
+// single query, so the rating computation avoids an N+1 query per user.
+pub fn get_all_tips(conn: &Connection) -> SqliteResult<Vec<Tip>> {
     let mut stmt = conn.prepare(
         "SELECT t.id, t.user_id, t.match_id, t.score_home, t.score_away \
          FROM tip t JOIN match m ON m.id = t.match_id \
-         WHERE t.user_id = ?1 AND t.date < m.utcDate \
+         WHERE t.date < m.utcDate \
          ORDER BY t.id",
     )?;
 
-    let tips_iter = stmt.query_map([user_id], |row| {
+    let tips_iter = stmt.query_map([], |row| {
         Ok(Tip {
             id: row.get(0)?,
             user_id: row.get(1)?,
@@ -109,9 +106,7 @@ pub fn get_tips_by_user(user_id: i32) -> SqliteResult<Vec<Tip>> {
     Ok(tips_list)
 }
 
-pub fn get_past_games() -> SqliteResult<Vec<Game>> {
-    let conn = establish_connection()?;
-
+pub fn get_past_games(conn: &Connection) -> SqliteResult<Vec<Game>> {
     let mut stmt = conn.prepare("SELECT id, homeTeam, awayTeam, homeScore, awayScore, utcDate FROM match WHERE homeScore >= 0 AND awayScore >= 0")?;
 
     let game_iter = match stmt.query_map([], |row| {
@@ -144,7 +139,8 @@ mod tests {
     #[test]
     fn test_get_users() {
         env::set_var("MODE", "test");
-        let users = get_users().unwrap();
+        let conn = establish_connection().unwrap();
+        let users = get_users(&conn).unwrap();
         assert_eq!(users.len(), 7);
 
         assert_eq!(users[0].username, "JohnDoe");
@@ -161,9 +157,14 @@ mod tests {
     }
 
     #[test]
-    fn test_get_tips_by_user() {
+    fn test_get_all_tips_for_user() {
         env::set_var("MODE", "test");
-        let tips = get_tips_by_user(1).unwrap();
+        let conn = establish_connection().unwrap();
+        let tips: Vec<Tip> = get_all_tips(&conn)
+            .unwrap()
+            .into_iter()
+            .filter(|t| t.user_id == 1)
+            .collect();
         assert_eq!(tips.len(), 2);
 
         assert_eq!(tips[0].id, 1);
@@ -180,9 +181,14 @@ mod tests {
     }
 
     #[test]
-    fn test_get_tips_by_user_excludes_post_kickoff_tips() {
+    fn test_get_all_tips_excludes_post_kickoff_tips() {
         env::set_var("MODE", "test");
-        let tips = get_tips_by_user(6).unwrap();
+        let conn = establish_connection().unwrap();
+        let tips: Vec<Tip> = get_all_tips(&conn)
+            .unwrap()
+            .into_iter()
+            .filter(|t| t.user_id == 6)
+            .collect();
         assert!(
             tips.iter().any(|t| t.match_id == 1),
             "pre-kickoff tip on match 1 must remain scored"
@@ -196,7 +202,8 @@ mod tests {
     #[test]
     fn test_get_past_games() {
         env::set_var("MODE", "test");
-        let games = get_past_games().unwrap();
+        let conn = establish_connection().unwrap();
+        let games = get_past_games(&conn).unwrap();
         assert_eq!(games.len(), 2);
 
         assert_eq!(games[0].id, 1);

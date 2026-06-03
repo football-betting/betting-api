@@ -27,11 +27,15 @@ pub struct UserResponse {
 }
 
 fn load_user_ratings() -> Result<Vec<UserRating>, HttpResponse> {
+    // One connection per request, reused for every query below (instead of one
+    // connection per query, which serialized the hot path under load).
+    let conn =
+        db::establish_connection().map_err(|_| HttpResponse::InternalServerError().finish())?;
     let past_games =
-        db::get_past_games().map_err(|_| HttpResponse::InternalServerError().finish())?;
-    let users = db::get_users().map_err(|_| HttpResponse::InternalServerError().finish())?;
+        db::get_past_games(&conn).map_err(|_| HttpResponse::InternalServerError().finish())?;
+    let users = db::get_users(&conn).map_err(|_| HttpResponse::InternalServerError().finish())?;
     let tournament_winner = std::env::var("TOURNAMENT_WINNER").unwrap_or_default();
-    service::get_user_rating(past_games, users, &tournament_winner)
+    service::get_user_rating(past_games, users, &conn, &tournament_winner)
         .map_err(|_| HttpResponse::InternalServerError().finish())
 }
 

@@ -1,4 +1,5 @@
-use crate::db::{get_tips_by_user, Game, Tip, User};
+use crate::db::{get_all_tips, Game, Tip, User};
+use rusqlite::Connection;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 
@@ -61,10 +62,22 @@ impl ScoreConfig {
 pub fn get_user_rating(
     games: Vec<Game>,
     users: Vec<User>,
+    conn: &Connection,
     tournament_winner: &str,
 ) -> Result<Vec<UserRating>, Box<dyn std::error::Error>> {
     let mut user_rating_list = Vec::new();
     let tournament_winner = tournament_winner.trim();
+
+    // One query for every countable tip, grouped by user — avoids an N+1 query
+    // (one tips query per user) on the hot /rating path.
+    let mut tips_by_user: HashMap<i32, HashMap<i32, Tip>> = HashMap::new();
+    for tip in get_all_tips(conn)? {
+        tips_by_user
+            .entry(tip.user_id)
+            .or_default()
+            .insert(tip.match_id, tip);
+    }
+    let no_tips: HashMap<i32, Tip> = HashMap::new();
 
     for user in &users {
         // The tournament champion is configured via env (TOURNAMENT_WINNER).
@@ -91,10 +104,7 @@ pub fn get_user_rating(
             extra_point,
             tips: Vec::new(),
         };
-        let tips_by_user: HashMap<i32, Tip> = get_tips_by_user(user.id)?
-            .into_iter()
-            .map(|tip| (tip.match_id, tip))
-            .collect();
+        let user_tips = tips_by_user.get(&user.id).unwrap_or(&no_tips);
 
         for game in &games {
             let mut match_info = MatchInfo {
@@ -111,7 +121,7 @@ pub fn get_user_rating(
                 date: game.date,
             };
 
-            if let Some(tip) = tips_by_user.get(&game.id) {
+            if let Some(tip) = user_tips.get(&game.id) {
                 match_info.tip_home = Some(tip.score_home);
                 match_info.tip_away = Some(tip.score_away);
 
@@ -507,7 +517,9 @@ mod tests {
         }];
 
         std::env::set_var("MODE", "test");
-        let result = get_user_rating(games, users, "").expect("rating computation must not error");
+        let conn = crate::db::establish_connection().unwrap();
+        let result =
+            get_user_rating(games, users, &conn, "").expect("rating computation must not error");
 
         assert_eq!(result.len(), 1);
         let tips = &result[0].tips;
