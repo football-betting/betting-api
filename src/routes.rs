@@ -30,7 +30,8 @@ fn load_user_ratings() -> Result<Vec<UserRating>, HttpResponse> {
     let past_games =
         db::get_past_games().map_err(|_| HttpResponse::InternalServerError().finish())?;
     let users = db::get_users().map_err(|_| HttpResponse::InternalServerError().finish())?;
-    service::get_user_rating(past_games, users)
+    let tournament_winner = std::env::var("TOURNAMENT_WINNER").unwrap_or_default();
+    service::get_user_rating(past_games, users, &tournament_winner)
         .map_err(|_| HttpResponse::InternalServerError().finish())
 }
 
@@ -136,6 +137,7 @@ mod tests {
 
     #[actix_web::test]
     async fn test_get_user_rating() {
+        env::set_var("TOURNAMENT_WINNER", "ESP");
         let resp = get_response_by_url("/rating").await;
 
         assert!(resp.status().is_success());
@@ -183,6 +185,7 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_user_by_id_returns_user_when_exists() {
+        env::set_var("TOURNAMENT_WINNER", "ESP");
         let resp = get_response_by_url("/user/2").await;
 
         assert!(resp.status().is_success());

@@ -54,22 +54,29 @@ impl ScoreConfig {
     pub const WIN_EXACT: i32 = 5;
     pub const WIN_SCORE_DIFF: i32 = 3;
     pub const WIN_TEAM: i32 = 2;
+    pub const WINNER_BONUS: i32 = 12;
+    pub const SECRET_WINNER_BONUS: i32 = 6;
 }
 
 pub fn get_user_rating(
     games: Vec<Game>,
     users: Vec<User>,
+    tournament_winner: &str,
 ) -> Result<Vec<UserRating>, Box<dyn std::error::Error>> {
     let mut user_rating_list = Vec::new();
+    let tournament_winner = tournament_winner.trim();
 
     for user in &users {
+        // The tournament champion is configured via env (TOURNAMENT_WINNER).
+        // Until it is set there is no winner yet, so nobody earns the bonus.
         let mut extra_point = ScoreConfig::NO_WIN_TEAM;
-        if user.winner == "ESP" {
-            extra_point = 12;
-        }
-
-        if user.secret_winner == "ESP" {
-            extra_point = 6;
+        if !tournament_winner.is_empty() {
+            if user.winner == tournament_winner {
+                extra_point = ScoreConfig::WINNER_BONUS;
+            }
+            if user.secret_winner == tournament_winner {
+                extra_point = ScoreConfig::SECRET_WINNER_BONUS;
+            }
         }
 
         let mut user_rating = UserRating {
@@ -500,7 +507,7 @@ mod tests {
         }];
 
         std::env::set_var("MODE", "test");
-        let result = get_user_rating(games, users).expect("rating computation must not error");
+        let result = get_user_rating(games, users, "").expect("rating computation must not error");
 
         assert_eq!(result.len(), 1);
         let tips = &result[0].tips;
