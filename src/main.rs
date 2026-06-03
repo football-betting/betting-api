@@ -10,6 +10,10 @@ const DEFAULT_BIND_ADDR: &str = "127.0.0.1:8080";
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    // Load .env ONCE at startup — never per DB connection (that hammered the
+    // global env lock + file I/O and serialized the hot path under load).
+    dotenvy::dotenv().ok();
+
     let bind_addr = env::var("BIND_ADDR").unwrap_or_else(|_| DEFAULT_BIND_ADDR.to_string());
 
     HttpServer::new(|| {
