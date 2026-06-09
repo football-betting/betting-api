@@ -251,7 +251,7 @@ fn get_users() -> Vec<DbUser> {
             last_name: String::from("Doe"),
             username: String::from("JohnDoe"),
             department: String::from("Langenfeld"),
-            winner: String::from("DEU"),
+            winner: String::from("GER"),
             secret_winner: String::from("ESP"),
         },
         DbUser {
@@ -261,7 +261,7 @@ fn get_users() -> Vec<DbUser> {
             username: String::from("ToniKroos"),
             department: String::from("Langenfeld"),
             winner: String::from("ESP"),
-            secret_winner: String::from("DEU"),
+            secret_winner: String::from("GER"),
         },
         DbUser {
             email: String::from("philipp@lahm.de"),
@@ -279,7 +279,7 @@ fn get_users() -> Vec<DbUser> {
             username: String::from("LukasPodolski"),
             department: String::from("Langenfeld"),
             winner: String::from("POL"),
-            secret_winner: String::from("DEU"),
+            secret_winner: String::from("GER"),
         },
         DbUser {
             email: String::from("robbie@fowler.com"),
@@ -287,7 +287,7 @@ fn get_users() -> Vec<DbUser> {
             last_name: String::from("Fowler"),
             username: String::from("RobbieFowler"),
             department: String::from("London"),
-            winner: String::from("NLD"),
+            winner: String::from("NED"),
             secret_winner: String::from("ESP"),
         },
         DbUser {
@@ -297,7 +297,7 @@ fn get_users() -> Vec<DbUser> {
             username: String::from("BobbyMoore"),
             department: String::from("London"),
             winner: String::from("ENG"),
-            secret_winner: String::from("DEU"),
+            secret_winner: String::from("GER"),
         },
         DbUser {
             email: String::from("steve@mcmanaman.com"),
